@@ -97,10 +97,13 @@ class NominaController extends Controller
 
                     $puesto = $row['puesto'] ?? null;
                     $sueldo_diario = isset($row['sueldo_diario']) && is_numeric($row['sueldo_diario']) ? (float)$row['sueldo_diario'] : null;
-                    $dias_trabajados = isset($row['dias_trab']) && is_numeric($row['dias_trab']) ? (float)$row['dias_trab'] : null;
+
+                    // Si 'dias_trab' viene vacío o no es numérico, pon 0
+                    $dias_trabajados = (isset($row['dias_trab']) && is_numeric($row['dias_trab'])) ? (float)$row['dias_trab'] : 0;
+
                     $sueldo_semanal = isset($row['sueldo_semanal']) && is_numeric($row['sueldo_semanal']) ? (float)$row['sueldo_semanal'] : null;
                     $deposito_bancario = isset($row['deposito_bancario']) && is_numeric($row['deposito_bancario']) ? (float)$row['deposito_bancario'] : null;
-                    $sueldo_a_pagar = isset($row['sueldo_a_pagar']) && is_numeric($row['sueldo_a_pagar']) ? (float)$row['sueldo_a_pagar'] : null;
+                    $sueldo_a_pagar = isset($row['sueldo_a_pagar']) && is_numeric($row['sueldo_a_pagar']) ? (float)$row['sueldo_a_pagar'] : 0;
                     $sueldo_fijo = isset($row['sueldo_fijo']) && is_numeric($row['sueldo_fijo']) ? (float)$row['sueldo_fijo'] : null;
                     $valor_bono = isset($row['valor_bono']) && is_numeric($row['valor_bono']) ? (float)$row['valor_bono'] : null;
                     $bono_obtenido = isset($row['bono_obtenido']) && is_numeric($row['bono_obtenido']) ? (float)$row['bono_obtenido'] : null;

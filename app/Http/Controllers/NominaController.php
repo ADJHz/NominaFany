@@ -73,34 +73,31 @@ class NominaController extends Controller
                 $rows = collect($sheet);
                 Log::info("Procesando hoja: $sheetName, total filas: " . $rows->count());
 
-                // Crea la subcarpeta para la hoja si no existe
                 $subfolderPath = $recibosPath . DIRECTORY_SEPARATOR . $sheetName;
                 if (!File::exists($subfolderPath)) {
                     File::makeDirectory($subfolderPath, 0777, true, true);
                     Log::info("Subcarpeta de recibos creada: $subfolderPath");
                 }
 
-                // Si hay filas, loguea las claves de la primera fila
-                if ($rows->count() > 0) {
-                    $firstRow = $rows->first();
-                    if ($firstRow instanceof \Illuminate\Support\Collection) {
-                        $firstRow = $firstRow->toArray();
-                    }
-                    Log::info('Claves de la primera fila: ' . implode(', ', array_keys((array)$firstRow)));
-                }
+                // Unificar todos los recibos de la hoja en un solo PDF
+                $allHtml = '';
+                $validRows = $rows->filter(function($row) {
+                    return !empty($row['nombre_empleado'] ?? null);
+                });
+
+                $totalValidRows = $validRows->count();
+                $currentRow = 0;
 
                 foreach ($rows as $row) {
                     $nombre = $row['nombre_empleado'] ?? null;
                     if (empty($nombre)) {
                         continue;
                     }
+                    $currentRow++;
 
                     $puesto = $row['puesto'] ?? null;
                     $sueldo_diario = isset($row['sueldo_diario']) && is_numeric($row['sueldo_diario']) ? (float)$row['sueldo_diario'] : null;
-
-                    // Si 'dias_trab' viene vacío o no es numérico, pon 0
                     $dias_trabajados = (isset($row['dias_trab']) && is_numeric($row['dias_trab'])) ? (float)$row['dias_trab'] : 0;
-
                     $sueldo_semanal = isset($row['sueldo_semanal']) && is_numeric($row['sueldo_semanal']) ? (float)$row['sueldo_semanal'] : null;
                     $deposito_bancario = isset($row['deposito_bancario']) && is_numeric($row['deposito_bancario']) ? (float)$row['deposito_bancario'] : null;
                     $sueldo_a_pagar = isset($row['sueldo_a_pagar']) && is_numeric($row['sueldo_a_pagar']) ? (float)$row['sueldo_a_pagar'] : 0;
@@ -121,16 +118,25 @@ class NominaController extends Controller
                         'bono_obtenido' => $bono_obtenido,
                     ]);
 
-                    $pdfName = str_replace(' ', '_', $nomina->nombre) . '_Nomina_' . now()->format('Ymd') . '.pdf';
-                    $pdfPath = $subfolderPath . DIRECTORY_SEPARATOR . $pdfName;
+                    // Agregar el recibo actual
+                    $allHtml .= view('pdf.recibo', compact('nomina'))->render();
 
-                    $pdf = Pdf::loadView('pdf.recibo', compact('nomina'));
-                    $pdf->save($pdfPath);
-
-                    Log::info('Recibo generado: ' . $pdfPath);
-
-                    $generatedReceipts[] = $sheetName . '/' . $pdfName;
+                    // Solo agregar salto de página si no es el último recibo
+                 /*   if ($currentRow < $totalValidRows) {
+                        $allHtml .= '<div style="page-break-before: always;"></div>';
+                    }*/
                 }
+
+                // Genera un solo PDF por hoja
+                $pdfName = str_replace(' ', '_', $sheetName) . '_Recibos_Nomina_' . now()->format('Ymd') . '.pdf';
+                $pdfPath = $subfolderPath . DIRECTORY_SEPARATOR . $pdfName;
+
+                $pdf = Pdf::loadHTML($allHtml)->setPaper('A4');
+                $pdf->save($pdfPath);
+
+                Log::info('PDF unificado generado: ' . $pdfPath);
+
+                $generatedReceipts[] = $sheetName . '/' . $pdfName;
             }
 
             if (empty($generatedReceipts)) {
